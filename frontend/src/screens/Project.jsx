@@ -88,7 +88,6 @@ const Project = () => {
                     </header>
                     <div className="users flex flex-col gap-2">
                         {project.users && project.users.map(user => {
-                            console.log(user.email)
                             return(
                                 <div className="user cursor-pointer hover:bg-slate-200 p-2 flex gap-2 items-center">
                                     <div className='aspect-square rounded-full w-fit h-fit flex items-center justify-center p-5 text-white bg-slate-600'>
