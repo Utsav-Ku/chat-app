@@ -1,9 +1,29 @@
-import React, { useState, useEffect, useContext } from 'react'
+import React, { useState, useEffect, useContext, useRef } from 'react'
 import { UserContext } from '../context/user.context'
 import { useNavigate, useLocation } from 'react-router-dom'
 import axios from '../config/axios'
 import { initializeSocket, receiveMessage, sendMessage } from '../config/socket'
 import Markdown from 'markdown-to-jsx'
+import { use } from 'react'
+
+function SyntaxHighlightedCode(props) {
+    const ref = useRef(null)
+
+    React.useEffect(() => {
+        if (ref.current && props.className?.includes('lang-') && window.hljs) {
+            window.hljs.highlightElement(ref.current)
+
+            // hljs won't reprocess the element unless this attribute is removed
+            ref.current.removeAttribute('data-highlighted')
+        }
+    }, [ props.className, props.children ])
+
+    return <code {...props} ref={ref} />
+}
+
+
+
+
 
 const Project = () => {
 
@@ -11,7 +31,7 @@ const Project = () => {
 
     const [ isSidePanelOpen, setIsSidePanelOpen ] = useState(false)
     const [ isModalOpen, setIsModalOpen ] = useState(false)
-    const [ selectedUserId, setSelectedUserId ] = useState([])
+    const [ selectedUserId, setSelectedUserId ] = useState(new Set()) // Initialized as Set
     const [ project, setProject ] = useState(location.state.project)
     const [ message, setMessage ] = useState('')
     const { user } = useContext(UserContext)
@@ -57,6 +77,7 @@ const Project = () => {
     }
 
     useEffect(() => {
+
         initializeSocket(project._id)
         receiveMessage('project-message', data => {
             setMessages(prevMessages => [ ...prevMessages, data ]) // Update messages state
@@ -68,12 +89,17 @@ const Project = () => {
             setProject(res.data.project)
         })
         axios.get('/users/all').then(res => {
-            setUsers(res.data.users)
-        }).catch(err => {
-            console.log(err)
-        })
 
+            setUsers(res.data.users)
+
+        }).catch(err => {
+
+            console.log(err)
+
+        })
     }, [])
+
+
     // Removed appendIncomingMessage and appendOutgoingMessage functions
 
     function scrollToBottom() {
@@ -93,16 +119,23 @@ const Project = () => {
                     </button>
                 </header>
                 <div className="conversation-area pt-14 pb-10 flex-grow flex flex-col h-full relative">
-                    <div ref={messageBox} className="message-box p-1 flex-grow flex flex-col gap-1 overflow-auto max-h-full scrollbar-hide">
+                    <div
+                        ref={messageBox}
+                        className="message-box p-1 flex-grow flex flex-col gap-1 overflow-auto max-h-full scrollbar-hide">
                         {messages.map((msg, index) => (
                             <div key={index} className={`${msg.sender._id === 'ai' ? 'max-w-80' : 'ml-auto max-w-54'}  message flex flex-col p-2 bg-slate-50 w-fit rounded-md`}>
                                 <small className='opacity-65 text-xs'>{msg.sender.email}</small>
                                 <p className='text-sm'>
                                     {msg.sender._id === 'ai' ?
-                                        <div
-                                            className='overflow-auto bg-slate-950 text-white rounded-sm p-2'
-                                        >
-                                            <Markdown>{msg.message}</Markdown>
+                                        <div className='overflow-auto bg-slate-950 text-white rounded-sm p-2'>
+                                            <Markdown
+                                                children={msg.message}
+                                                options={{
+                                                    overrides: {
+                                                        code: SyntaxHighlightedCode,
+                                                    },
+                                                }}
+                                            />
                                         </div>
                                         : msg.message}
                                 </p>
@@ -154,9 +187,7 @@ const Project = () => {
                                 </div>
                             ))}
                         </div>
-                        <button
-                            onClick={addCollaborators}
-                            className='absolute bottom-4 left-1/2 transform -translate-x-1/2 px-4 py-2 bg-blue-600 text-white rounded-md'>
+                        <button onClick={addCollaborators} className='absolute bottom-4 left-1/2 transform -translate-x-1/2 px-4 py-2 bg-blue-600 text-white rounded-md'>
                             Add Collaborators
                         </button>
                     </div>
