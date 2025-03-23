@@ -71,6 +71,22 @@ const Project = () => {
         setMessage("")
     }
 
+    function WriteAiMessage(message) {
+        const messageObject = JSON.parse(message)
+        return (
+            <div className='overflow-auto bg-slate-950 text-white rounded-sm p-2'>
+                <Markdown
+                    children={messageObject.text}
+                    options={{
+                        overrides: {
+                            code: SyntaxHighlightedCode,
+                        },
+                    }}
+                />
+            </div>
+        )
+    }
+
     useEffect(() => {
 
         initializeSocket(project._id)
@@ -93,7 +109,6 @@ const Project = () => {
 
         })
     }, [])
-
 
     // Removed appendIncomingMessage and appendOutgoingMessage functions
 
@@ -120,16 +135,7 @@ const Project = () => {
                                 <small className='opacity-65 text-xs'>{msg.sender.email}</small>
                                 <p className='text-sm'>
                                     {msg.sender._id === 'ai' ?
-                                        <div className='overflow-auto bg-slate-950 text-white rounded-sm p-2'>
-                                            <Markdown
-                                                children={msg.message}
-                                                options={{
-                                                    overrides: {
-                                                        code: SyntaxHighlightedCode,
-                                                    },
-                                                }}
-                                            />
-                                        </div>
+                                        WriteAiMessage(msg.message)
                                         : msg.message}
                                 </p>
                             </div>
