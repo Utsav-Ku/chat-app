@@ -42,6 +42,7 @@ const Project = () => {
     const [ openFiles, setOpenFiles ] = useState([])
 
     const [ webContainer, setWebContainer ] = useState(null)
+    const [ iframeUrl, setIFrameUrl ] = useState(null)
 
     const handleUserClick = (id) => {
         setSelectedUserId(prevSelectedUserId => {
@@ -150,7 +151,7 @@ const Project = () => {
                 <div className="conversation-area pt-14 pb-10 flex-grow flex flex-col h-full relative">
                     <div ref={messageBox} className="message-box p-1 flex-grow flex flex-col gap-1 overflow-auto max-h-full scrollbar-hide">
                         {messages.map((msg, index) => (
-                            <div key={index} className={`${msg.sender._id === 'ai' ? 'max-w-80' : 'max-w-54'} ${msg.sender._id == user._id.toString() && 'ml-auto'}  message flex flex-col p-2 bg-slate-50 w-fit rounded-md`}>
+                            <div key={index} className={`${msg.sender._id === 'ai' ? 'max-w-80' : 'max-w-52'} ${msg.sender._id == user._id.toString() && 'ml-auto'}  message flex flex-col p-2 bg-slate-50 w-fit rounded-md`}>
                                 <small className='opacity-65 text-xs'>{msg.sender.email}</small>
                                 <div className='text-sm'>
                                     {msg.sender._id === 'ai' ?
@@ -208,80 +209,87 @@ const Project = () => {
                         }
                     </div>
                 </div>
-
-                
-                    <div className="code-editor flex flex-col flex-grow h-full shrink">
-                        <div className="top flex justify-between w-full">
-                            <div className="files flex ">
-                            {
-                                openFiles.map((file, index) => (
-                                    <button
-                                        key={index}
-                                        onClick={() => setCurrentFile(file)}
-                                        className={`open-file cursor-pointer p-2 px-4 flex items-center w-fit gap-2 bg-slate-300 ${currentFile === file ? 'bg-slate-400' : ''}`}>
-                                        <p
-                                            className='font-semibold text-lg'
-                                        >{file}</p>
-                                    </button>
-                                ))
-                            }
-                            </div>
-                            <div className="actions flex gap-2">
-                                <button 
-                                    onClick={async() => {
-                                        await webContainer.mount(fileTree)
-                                        const installProcess = await webContainer.spawn("npm",["install"])
-                                        installProcess.output.pipeTo(new WritableStream({
-                                            write(chunk) {
-                                                console.log(chunk)
-                                            }
-                                        }))
-                                        const runProcess = await webContainer.spawn("npm",["start"])
-                                        runProcess.output.pipeTo(new WritableStream({
-                                            write(chunk) {
-                                                console.log(chunk)
-                                            }
-                                        }))
-                                    }}
-                                >
-                                    run
+                <div className="code-editor flex flex-col flex-grow h-full shrink">
+                    <div className="top flex justify-between w-full">
+                        <div className="files flex ">
+                        {
+                            openFiles.map((file, index) => (
+                                <button
+                                    key={index}
+                                    onClick={() => setCurrentFile(file)}
+                                    className={`open-file cursor-pointer p-2 px-4 flex items-center w-fit gap-2 bg-slate-300 ${currentFile === file ? 'bg-slate-400' : ''}`}>
+                                    <p
+                                        className='font-semibold text-lg'
+                                    >{file}</p>
                                 </button>
-                            </div>
+                            ))
+                        }
                         </div>
-                        <div className="bottom flex flex-grow max-w-full shrink overflow-auto">
-                            {
-                                fileTree[ currentFile ] && (
-                                    <div className="code-editor-area h-full overflow-auto flex-grow bg-slate-50">
-                                        <pre
-                                            className="hljs h-full">
-                                            <code
-                                                className="hljs h-full outline-none"
-                                                contentEditable
-                                                suppressContentEditableWarning
-                                                onBlur={(e) => {
-                                                    const updatedContent = e.target.innerText;
-                                                    setFileTree(prevFileTree => ({
-                                                        ...prevFileTree,
-                                                        [ currentFile ]: {
-                                                            ...prevFileTree[ currentFile ],
-                                                            content: updatedContent
-                                                        }
-                                                    }));
-                                                }}
-                                                dangerouslySetInnerHTML={{ __html: hljs.highlight('javascript', fileTree[ currentFile ].file.contents).value }}
-                                                style={{
-                                                    whiteSpace: 'pre-wrap',
-                                                    paddingBottom: '25rem',
-                                                    counterSet: 'line-numbering',
-                                                }}
-                                            />
-                                        </pre>
-                                    </div>
-                                )
-                            }
+                        <div className="actions flex gap-2">
+                            <button 
+                                onClick={async() => {
+                                    await webContainer.mount(fileTree)
+                                    const installProcess = await webContainer.spawn("npm",["install"])
+                                    installProcess.output.pipeTo(new WritableStream({
+                                        write(chunk) {
+                                            console.log(chunk)
+                                        }
+                                    }))
+                                    const runProcess = await webContainer.spawn("npm",["start"])
+                                    runProcess.output.pipeTo(new WritableStream({
+                                        write(chunk) {
+                                            console.log(chunk)
+                                        }
+                                    }))
+
+                                    webContainer.on('server-ready',(port,url) => {
+                                        console.log(port,url)
+                                        setIFrameUrl(url)
+                                    })
+                                }}
+                            >
+                                run
+                            </button>
                         </div>
                     </div>
-                
+                    <div className="bottom flex flex-grow max-w-full shrink overflow-auto">
+                        {
+                            fileTree[ currentFile ] && (
+                                <div className="code-editor-area h-full overflow-auto flex-grow bg-slate-50">
+                                    <pre
+                                        className="hljs h-full">
+                                        <code
+                                            className="hljs h-full outline-none"
+                                            contentEditable
+                                            suppressContentEditableWarning
+                                            onBlur={(e) => {
+                                                const updatedContent = e.target.innerText;
+                                                setFileTree(prevFileTree => ({
+                                                    ...prevFileTree,
+                                                    [ currentFile ]: {
+                                                        ...prevFileTree[ currentFile ],
+                                                        content: updatedContent
+                                                    }
+                                                }));
+                                            }}
+                                            dangerouslySetInnerHTML={{ __html: hljs.highlight('javascript', fileTree[ currentFile ].file.contents).value }}
+                                            style={{
+                                                whiteSpace: 'pre-wrap',
+                                                paddingBottom: '25rem',
+                                                counterSet: 'line-numbering',
+                                            }}
+                                        />
+                                    </pre>
+                                </div>
+                            )
+                        }
+                    </div>
+                </div>
+
+                {iframeUrl && webContainer && 
+                    <iframe src={iframeUrl} className='w-1/2 h-full'></iframe>
+                }
+
             </section>
 
             {isModalOpen && (
