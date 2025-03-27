@@ -43,6 +43,7 @@ const Project = () => {
 
     const [ webContainer, setWebContainer ] = useState(null)
     const [ iframeUrl, setIFrameUrl ] = useState(null)
+    const [ runProcess, setRunProcess ] = useState(null)
 
     const handleUserClick = (id) => {
         setSelectedUserId(prevSelectedUserId => {
@@ -225,22 +226,30 @@ const Project = () => {
                             ))
                         }
                         </div>
-                        <div className="actions flex gap-2">
+                        <div className="actions flex gap-2 ">
                             <button 
                                 onClick={async() => {
                                     await webContainer.mount(fileTree)
                                     const installProcess = await webContainer.spawn("npm",["install"])
+
                                     installProcess.output.pipeTo(new WritableStream({
                                         write(chunk) {
                                             console.log(chunk)
                                         }
                                     }))
-                                    const runProcess = await webContainer.spawn("npm",["start"])
-                                    runProcess.output.pipeTo(new WritableStream({
+
+                                    if(runProcess) {
+                                        runProcess.kill()
+                                    }
+                                    let tempRunProcess = await webContainer.spawn("npm",["start"])
+
+                                    tempRunProcess.output.pipeTo(new WritableStream({
                                         write(chunk) {
                                             console.log(chunk)
                                         }
                                     }))
+
+                                    setRunProcess(tempRunProcess)
 
                                     webContainer.on('server-ready',(port,url) => {
                                         console.log(port,url)
@@ -268,7 +277,10 @@ const Project = () => {
                                                     ...prevFileTree,
                                                     [ currentFile ]: {
                                                         ...prevFileTree[ currentFile ],
-                                                        content: updatedContent
+                                                        file: {
+                                                            ...prevFileTree[ currentFile ].file,
+                                                            contents: updatedContent
+                                                        }
                                                     }
                                                 }));
                                             }}
@@ -287,7 +299,15 @@ const Project = () => {
                 </div>
 
                 {iframeUrl && webContainer && 
-                    <iframe src={iframeUrl} className='w-1/2 h-full'></iframe>
+                    (<div className="flex min-w-96 flex-col h-full ">
+                        <div className="adress-bar">
+                            <input 
+                                onChange={(e) => setIFrameUrl(e.target.value)}
+                                type='text' value={iframeUrl} className='w-full p-2 px-4 bg-slate-200' 
+                            />
+                        </div>
+                        <iframe src={iframeUrl} className='w-full h-full'></iframe>
+                    </div>)
                 }
 
             </section>
